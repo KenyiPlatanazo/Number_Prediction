@@ -1,47 +1,63 @@
-import numpy as np 
-import pandas as pd
+from sklearn import datasets
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import os
 from sklearn.model_selection import train_test_split
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Flatten, Input
-from tensorflow.keras.utils import to_categorical
+from sklearn import tree
+#from sklearn.linear_model import LogisticRegression
+from sklearn import neighbors #K-Nearest neightbor
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import  classification_report
+from sklearn import metrics
+import dill as pickle
 
-train_data = pd.read_csv("./Train.csv")
-print("Shape of train_data:", train_data.shape)
-X = train_data.iloc[:, 1:]
-y = train_data.iloc[:, 0]
+print(os.listdir("./input"))
 
-if not isinstance(X, pd.DataFrame):
-    X = pd.DataFrame(X)
-X = X.apply(pd.to_numeric, errors='coerce')
-X = X.fillna(0)
-X = X.values/255.0
-X = X.reshape(-1, 28, 28, 1)
-print("Shape of X after reshaping:", X.shape)
+digits = datasets.load_digits()
+pd = datasets.load_digits()
+print('Digits dictionary content \n{}'.format(digits.keys()))
 
-y = to_categorical(y, num_classes=10)
-print("Shape of y after one-hote encoding:", y.shape)
 
-X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
-print("X_train shape", X_train.shape)
 
-model = Sequential([
-    Input(shape=(28,28,1)),
-    Flatten(),
-    Dense(128, activation="relu"),
-    Dense(64, activation="relu"),
-    Dense(10, activation="softmax")
-])
-model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
-model.summary()
+images_and_labels = list(zip(digits.images, digits.target))
+for index, (image, label) in enumerate(images_and_labels[:4]):
+    plt.subplot(2, 4, index + 1)
+    plt.axis('off')
+    plt.imshow(image, cmap=plt.cm.gray_r, interpolation='nearest')
+    plt.title('Training: %i' % label)
 
-history = model.fit(X_train, y_train, epochs=10, batch_size=32, validation_data=(X_val, y_val))
-model.save("model_number_prediction.h5")
+images_and_labels = list(zip(digits.images, digits.target))
+for index, (data, label) in enumerate(images_and_labels[:4]):
+    imgdim=int(np.sqrt(digits.data[index].shape[0]))
+    img=np.reshape(digits.data[index],(imgdim,imgdim))
+    plt.subplot(2, 4, index + 1)
+    plt.axis('off')
+    plt.imshow(img, cmap=plt.cm.gray_r, interpolation='nearest')
+    plt.title('Training: %i' % label)
 
-val_loss, val_accuracy = model.evaluate(X_val, y_val)
-print(f"Validation Accuracy: {val_accuracy * 100:.2f}%")
-plt.plot(history.history['accuracy'], label='Training Accuracy')
-plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
-plt.legend()
-plt.show()
 
+
+X_train, X_test, y_train, y_test = train_test_split(digits.data,digits.target,test_size=0.25)
+print('Training data and target sizes: \n{}, {}'.format(X_train.shape,y_train.shape))
+print('Test data and target sizes: \n{}, {}'.format(X_test.shape,y_test.shape))
+
+
+
+#Using LogisticRegression it returns a 96% accuracy
+#class_logistic = LogisticRegression()
+#class_logistic.fit(X_train, y_train)
+
+#y_pred = class_logistic.predict(X_test)
+#print("Accuracy of model = %2f%%" % (accuracy_score(y_test, y_pred )*100))
+
+knn=neighbors.KNeighborsClassifier() #98.666...% accuracy. Way better
+knn.fit(X_train, y_train)
+y_pred  = knn.predict(X_test)
+print("Accuracy of model = %2f%%" % (accuracy_score(y_test, y_pred )*100))
+
+print("Classification report for classifier %s:\n%s\n" % (knn, metrics.classification_report(y_test, y_pred)))
+
+filename = 'knnModel.pk'
+with open('./'+filename, 'wb') as file:
+    pickle.dump(knn, file) 
